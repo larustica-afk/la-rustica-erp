@@ -1,15 +1,25 @@
-'use client'
-import { useState } from 'react'
-import Link from 'next/link'
-const nav = [{i:'⌂',t:'Inicio'},{i:'▣',t:'Pedidos'},{i:'▤',t:'Catálogo'},{i:'♧',t:'Clientes'},{i:'$',t:'Finanzas'}]
+'use client';
+import { useMemo, useState } from 'react';
+
+const products = [
+ {id:'panettone',name:'Panettone La Rústica',description:'Chips de chocolate amargo, naranjitas confitadas y cobertura crocante de almendra.',price:35000,category:'Especiales'},
+ {id:'molde',name:'Molde Rústico Integral',description:'Pan de masa madre, harina blanca e integral.',price:6300,category:'Panes'},
+ {id:'hogaza',name:'Hogaza Rústica Integral',description:'Pan de masa madre, corteza y miga de carácter.',price:6800,category:'Panes'},
+ {id:'focaccia',name:'Focaccia Duo',description:'Focaccia artesanal para compartir.',price:10000,category:'Panes'},
+];
+const money=(n:number)=>n.toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
 export default function Home(){
- const [active,setActive]=useState('Inicio')
- return <main className="shell">
-  <header><div><div className="brand">LA RÚSTICA</div><div className="tag">Pan Real, Vida Real.</div></div><button className="iconbtn" aria-label="Menú">☰</button></header>
-  <section className="welcome"><p className="eyebrow">PANEL DE ADMINISTRACIÓN</p><h1>Buen día.</h1><p className="muted">Resumen de la actividad</p></section>
-  <section className="metrics"><article><small>Pedidos pendientes</small><strong>—</strong><span>Hoy</span></article><article><small>Producción</small><strong>—</strong><span>Unidades</span></article><article><small>Cobros</small><strong>—</strong><span>Registrados</span></article><article><small>Entregas</small><strong>—</strong><span>Programadas</span></article></section>
-  <section className="actions"><h2>Acciones rápidas</h2><div className="actiongrid"><Link href="/pedidos" className="actionlink"><b>＋</b><span>Nuevo pedido</span></Link><Link href="/pedidos" className="actionlink"><b>↗</b><span>Registrar pago</span></Link><Link href="/pedidos" className="actionlink"><b>⌁</b><span>Entregas</span></Link><Link href="/pedidos" className="actionlink"><b>◉</b><span>WhatsApp</span></Link><Link href="/catalogo" className="actionlink"><b>▤</b><span>Catálogo</span></Link><Link href="/clientes" className="actionlink"><b>♧</b><span>Clientes</span></Link></div></section>
-  <section className="recent"><div className="row"><h2>Actividad reciente</h2><button className="link">Ver todos</button></div><div className="empty"><div className="bread">✳</div><p>Los pedidos aparecerán aquí.</p><small>Conectaremos este panel con los datos reales.</small></div></section>
-  <nav className="bottomnav">{nav.map(n=><Link href={n.t==='Pedidos'?'/pedidos':n.t==='Catálogo'?'/catalogo':n.t==='Clientes'?'/clientes':'/'} key={n.t} onClick={()=>setActive(n.t)} className={active===n.t?'selected':''}><span>{n.i}</span>{n.t}</Link>)}</nav>
- </main>
+ const [qty,setQty]=useState<Record<string,number>>({});
+ const [name,setName]=useState('');const [phone,setPhone]=useState('');const [delivery,setDelivery]=useState('retiro');const [address,setAddress]=useState('');const [day,setDay]=useState('');const [time,setTime]=useState('');const [notes,setNotes]=useState('');
+ const items=products.filter(p=>(qty[p.id]||0)>0);const subtotal=useMemo(()=>items.reduce((s,p)=>s+p.price*(qty[p.id]||0),0),[items,qty]);const shipping=delivery==='envio'?2500:0;const total=subtotal+shipping;
+ const change=(id:string,d:number)=>setQty(q=>({...q,[id]:Math.max(0,(q[id]||0)+d)}));
+ const send=()=>{if(!name.trim()){alert('Ingresá tu nombre');return;}if(!items.length){alert('Elegí al menos un producto');return;}if(delivery==='envio'&&(!address.trim()||!day||!time)){alert('Completá dirección, día y horario de entrega');return;}
+ const lines=['*PEDIDO LA RÚSTICA*','',`Cliente: ${name}`,phone?`Celular: ${phone}`:'',delivery==='envio'?`Entrega: ${address}`:'Entrega: Retiro',delivery==='envio'?`Día: ${day}`:'',delivery==='envio'?`Horario: ${time}`:'','*Pedido:*',...items.map(p=>`${qty[p.id]} x ${p.name} — ${money(p.price*qty[p.id])}`),'',`Subtotal: ${money(subtotal)}`,delivery==='envio'?`Envío Uber Moto: ${money(shipping)}`:'',`*TOTAL: ${money(total)}*`,'',`Transferencia: alias *larustica.masamadre*`,notes?`Observaciones: ${notes}`:''].filter(Boolean).join('\n');
+ const url='https://wa.me/5493815752384?text='+encodeURIComponent(lines);window.location.href=url;};
+ return <main className="store"><header className="store-header"><div><div className="store-brand">LA RÚSTICA</div><div className="store-tag">Pan Real, Vida Real.</div></div><a className="cart-pill" href="#pedido">🛒 {items.reduce((a,p)=>a+qty[p.id],0)}</a></header>
+ <section className="store-hero"><p className="eyebrow">PANADERÍA ARTESANAL · TUCUMÁN</p><h1>Elegí tus panes.</h1><p>Hechos con masa madre, para disfrutar en casa.</p></section>
+ <section className="store-products"><h2>Catálogo</h2>{products.map(p=><article className="store-product" key={p.id}><div className="product-copy"><small>{p.category}</small><h3>{p.name}</h3><p>{p.description}</p><strong>{money(p.price)}</strong></div><div className="qty-control"><button aria-label="Restar" onClick={()=>change(p.id,-1)}>−</button><span>{qty[p.id]||0}</span><button aria-label="Agregar" onClick={()=>change(p.id,1)}>+</button></div></article>)}</section>
+ <section id="pedido" className="checkout"><h2>Tu pedido</h2>{items.length?items.map(p=><div className="cart-line" key={p.id}><span>{qty[p.id]} × {p.name}</span><strong>{money(qty[p.id]*p.price)}</strong></div>):<p className="hint">Todavía no agregaste productos.</p>}<div className="total-line"><span>Subtotal</span><strong>{money(subtotal)}</strong></div>
+ <h3>¿Cómo lo recibís?</h3><div className="delivery-options"><button className={delivery==='retiro'?'chosen':''} onClick={()=>setDelivery('retiro')}>Retiro</button><button className={delivery==='envio'?'chosen':''} onClick={()=>setDelivery('envio')}>Envío Uber Moto · $2.500</button></div>{delivery==='envio'&&<><label>Dirección<input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Calle, número, barrio"/></label><label>Día de entrega<input type="date" value={day} onChange={e=>setDay(e.target.value)}/></label><label>Horario para recibir<input value={time} onChange={e=>setTime(e.target.value)} placeholder="Ej. 10 a 12 hs"/></label><p className="hint">Indicá un horario en el que alguien pueda recibir el pedido.</p></>}
+ <label>Nombre<input value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre"/></label><label>Celular (opcional)<input inputMode="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Tu teléfono"/></label><label>Observaciones (opcional)<textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Algo que debamos saber" rows={3}/></label>{delivery==='envio'&&<div className="total-line"><span>Envío Uber Moto</span><strong>{money(shipping)}</strong></div>}<div className="total-line grand"><span>Total</span><strong>{money(total)}</strong></div><p className="payment-note">Transferencia: <b>larustica.masamadre</b></p><button className="send-wa" onClick={send}>Enviar pedido por WhatsApp</button><p className="hint centered">Se abrirá WhatsApp con tu pedido listo para enviar.</p></section><footer>La Rústica · Tucumán</footer></main>;
 }
